@@ -1,0 +1,322 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
+import '../../../config/routes.dart';
+import '../../../models/visit.dart';
+
+
+class VisitDetailsScreen extends StatelessWidget {
+  final Visit visit;
+
+  const VisitDetailsScreen({Key? key, required this.visit}) : super(key: key);
+
+  void _shareVisit(BuildContext context) async {
+    String text =
+        '''
+Doctor: ${visit.doctor}
+Date: ${visit.date}
+Reason: ${visit.reason}
+${visit.notes != null && visit.notes!.isNotEmpty ? 'Notes: ${visit.notes}' : ''}
+''';
+
+    if (visit.prescriptionImagePath != null &&
+        visit.prescriptionImagePath!.isNotEmpty) {
+      final xFile = XFile(visit.prescriptionImagePath!);
+      await Share.shareXFiles([xFile], text: text);
+    } else {
+      await Share.share(text);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Visit Details'),
+        centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () => _shareVisit(context),
+            tooltip: 'Share',
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Doctor Card
+            Card(
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).primaryColor.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.medical_services,
+                        color: Theme.of(context).primaryColor,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Doctor',
+                            style: Theme.of(context).textTheme.labelSmall,
+                          ),
+                          Text(
+                            visit.doctor,
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Visit Information Section
+            Text(
+              'Visit Information',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+
+            _buildDetailRow(
+              context,
+              icon: Icons.calendar_today,
+              label: 'Date',
+              value: visit.date,
+            ),
+
+            _buildDetailRow(
+              context,
+              icon: Icons.medical_information,
+              label: 'Reason',
+              value: visit.reason,
+            ),
+
+            if (visit.notes != null && visit.notes!.isNotEmpty)
+              _buildDetailRow(
+                context,
+                icon: Icons.note,
+                label: 'Notes',
+                value: visit.notes!,
+              ),
+
+            const SizedBox(height: 8),
+
+            // Prescription Section
+            if (visit.prescriptionImagePath != null &&
+                visit.prescriptionImagePath!.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              const Text(
+                'Prescription:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () {
+                  if (visit.prescriptionImagePath!.toLowerCase().endsWith(
+                    '.pdf',
+                  )) {
+                    Navigator.pushNamed(
+                      context,
+                      Routes.prescriptionPdfViewerScreen,
+                      arguments: visit.prescriptionImagePath!,
+                      // MaterialPageRoute(
+                      //   builder: (_) => PrescriptionPdfViewerScreen(
+                      //     pdfPath: visit.prescriptionImagePath!,
+                      //   ),
+                      // ),
+                    );
+                  } else {
+
+                    Navigator.pushNamed(
+                        context,
+                        Routes.prescriptionImageViewerScreen,
+                        arguments: visit.prescriptionImagePath!,);
+                    // Navigator.push(
+                    //   context,
+                    //   MaterialPageRoute(
+                    //     builder: (_) => PrescriptionImageViewerScreen(
+                    //       imagePath: visit.prescriptionImagePath!,
+                    //     ),
+                    //   ),
+                    // );
+                  }
+                },
+                child:
+                    visit.prescriptionImagePath!.toLowerCase().endsWith('.pdf')
+                    ? Row(
+                        children: [
+                          const Icon(
+                            Icons.picture_as_pdf,
+                            color: Colors.red,
+                            size: 40,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              visit.prescriptionImagePath!.split('/').last,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Image.file(
+                        File(visit.prescriptionImagePath!),
+                        height: 180,
+                        fit: BoxFit.cover,
+                      ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: Colors.grey[600]),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 2),
+                Text(value, style: Theme.of(context).textTheme.bodyMedium),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widget _buildPdfCard(BuildContext context) {
+  //   return GestureDetector(
+  //     onTap: () {
+  //       // Handle PDF opening
+  //     },
+  //     child: Card(
+  //       elevation: 1,
+  //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  //       child: Padding(
+  //         padding: const EdgeInsets.all(16.0),
+  //         child: Row(
+  //           children: [
+  //             Container(
+  //               padding: const EdgeInsets.all(12),
+  //               decoration: BoxDecoration(
+  //                 color: Colors.red[50],
+  //                 shape: BoxShape.circle,
+  //               ),
+  //               child: const Icon(
+  //                 Icons.picture_as_pdf,
+  //                 color: Colors.red,
+  //                 size: 28,
+  //               ),
+  //             ),
+  //             const SizedBox(width: 16),
+  //             Expanded(
+  //               child: Column(
+  //                 crossAxisAlignment: CrossAxisAlignment.start,
+  //                 children: [
+  //                   Text(
+  //                     'Prescription PDF',
+  //                     style: Theme.of(context).textTheme.labelMedium,
+  //                   ),
+  //                   Text(
+  //                     visit.prescriptionImagePath!.split('/').last,
+  //                     style: Theme.of(
+  //                       context,
+  //                     ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+  //                     overflow: TextOverflow.ellipsis,
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //             Icon(Icons.chevron_right, color: Colors.grey[400]),
+  //           ],
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
+  //
+  // Widget _buildImagePreview() {
+  //   return ClipRRect(
+  //     borderRadius: BorderRadius.circular(12),
+  //     child: Stack(
+  //       children: [
+  //         Image.file(
+  //           File(visit.prescriptionImagePath!),
+  //           height: 200,
+  //           width: double.infinity,
+  //           fit: BoxFit.cover,
+  //         ),
+  //         Positioned(
+  //           bottom: 0,
+  //           left: 0,
+  //           right: 0,
+  //           child: Container(
+  //             padding: const EdgeInsets.all(8),
+  //             decoration: BoxDecoration(
+  //               gradient: LinearGradient(
+  //                 begin: Alignment.bottomCenter,
+  //                 end: Alignment.topCenter,
+  //                 colors: [Colors.black.withOpacity(0.7), Colors.transparent],
+  //               ),
+  //             ),
+  //             child: Text(
+  //               'Prescription Image',
+  //               style: const TextStyle(
+  //                 color: Colors.white,
+  //                 fontWeight: FontWeight.bold,
+  //               ),
+  //             ),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
+}

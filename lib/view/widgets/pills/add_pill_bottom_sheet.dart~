@@ -1,0 +1,282 @@
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import '../../../models/pill.dart';
+import '../../../viewmodels/health_cubit.dart';
+
+class AddPillBottomSheet extends StatefulWidget {
+  final Function(Pill) onPillAdded;
+
+  const AddPillBottomSheet({
+    Key? key,
+    required this.onPillAdded,
+  }) : super(key: key);
+
+  @override
+  State<AddPillBottomSheet> createState() => _AddPillBottomSheetState();
+}
+
+class _AddPillBottomSheetState extends State<AddPillBottomSheet> {
+  final _nameController = TextEditingController();
+  final _dosageController = TextEditingController();
+  final _notesController = TextEditingController();
+  String _selectedTime = '08:00';
+  int _quantity = 1;
+  bool _enableNotification = true;
+  String? _selectedImagePath;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _dosageController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    
+    if (image != null) {
+      setState(() {
+        _selectedImagePath = image.path;
+      });
+    }
+  }
+
+  Future<void> _selectTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    
+    if (picked != null) {
+      setState(() {
+        _selectedTime = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+      });
+    }
+  }
+
+  void _addPill() {
+    if (_nameController.text.isEmpty || _dosageController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill in all required fields'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final pill = Pill(
+      name: _nameController.text,
+      dosage: _dosageController.text,
+      schedule: 'Daily at $_selectedTime',
+      iconCodePoint: Icons.medication.codePoint,
+      imagePath: _selectedImagePath,
+      time: _selectedTime,
+      quantity: _quantity,
+      enableNotification: _enableNotification,
+      notes: _notesController.text.isNotEmpty ? _notesController.text : null,
+    );
+
+    context.read<HealthCubit>().addPill(pill);
+    widget.onPillAdded(pill);
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Add Pill Reminder',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            
+            // Pill Name
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Pill Name *',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.medication),
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Dosage
+            TextField(
+              controller: _dosageController,
+              decoration: const InputDecoration(
+                labelText: 'Dosage *',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.science),
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Time Selection
+            InkWell(
+              onTap: _selectTime,
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Time: $_selectedTime',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                    const Icon(Icons.arrow_drop_down),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Quantity
+            Row(
+              children: [
+                const Icon(Icons.numbers),
+                const SizedBox(width: 8),
+                const Text('Quantity:'),
+                const SizedBox(width: 16),
+                IconButton(
+                  onPressed: () {
+                    if (_quantity > 1) {
+                      setState(() {
+                        _quantity--;
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.remove_circle_outline),
+                ),
+                Text(
+                  '$_quantity',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _quantity++;
+                    });
+                  },
+                  icon: const Icon(Icons.add_circle_outline),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            // Notification Toggle
+            SwitchListTile(
+              title: const Text('Enable Reminder'),
+              subtitle: const Text('Send notification at scheduled time'),
+              value: _enableNotification,
+              onChanged: (value) {
+                setState(() {
+                  _enableNotification = value;
+                });
+              },
+              secondary: const Icon(Icons.notifications),
+            ),
+            const SizedBox(height: 16),
+            
+            // Image Selection
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _pickImage,
+                    icon: const Icon(Icons.photo),
+                    label: const Text('Add Pill Image (Optional)'),
+                  ),
+                ),
+              ],
+            ),
+            if (_selectedImagePath != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                height: 100,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(
+                    File(_selectedImagePath!),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            
+            // Notes
+            TextField(
+              controller: _notesController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Notes (Optional)',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.note),
+              ),
+            ),
+            const SizedBox(height: 20),
+            
+            // Add Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _addPill,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text(
+                  'Add Pill Reminder',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+} 

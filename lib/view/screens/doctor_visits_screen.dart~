@@ -1,0 +1,321 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../models/visit.dart';
+import '../../viewmodels/health_cubit.dart';
+import '../../viewmodels/health_state.dart';
+import '../../core/utils/widgets/empty_files.dart';
+import '../widgets/visit_list_tile.dart';
+import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
+import '../../config/routes.dart';
+import '../../core/constants/app_colors.dart';
+
+class DoctorVisitsScreen extends StatefulWidget {
+  const DoctorVisitsScreen({Key? key}) : super(key: key);
+
+  @override
+  State<DoctorVisitsScreen> createState() => _DoctorVisitsScreenState();
+}
+
+class _DoctorVisitsScreenState extends State<DoctorVisitsScreen> {
+  void _showAddVisitBottomSheet(BuildContext context) {
+    final doctorController = TextEditingController();
+    final reasonController = TextEditingController();
+    final notesController = TextEditingController();
+    String selectedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    String? selectedPrescriptionPath;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Add New Doctor Visit',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: doctorController,
+                    decoration: const InputDecoration(
+                      labelText: 'Doctor Name',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Date Picker
+                  InkWell(
+                    onTap: () async {
+                      final DateTime? picked = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (picked != null) {
+                        setState(() {
+                          selectedDate = DateFormat('yyyy-MM-dd').format(picked);
+                        });
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Date: $selectedDate',
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                          const Icon(Icons.calendar_today),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: reasonController,
+                    decoration: const InputDecoration(
+                      labelText: 'Reason for Visit',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: notesController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Notes (Optional)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Prescription Image/PDF Selection
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            FilePickerResult? result = await FilePicker.platform.pickFiles(
+                              type: FileType.custom,
+                              allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+                            );
+                            if (result != null) {
+                              setState(() {
+                                selectedPrescriptionPath = result.files.single.path;
+                              });
+                            }
+                          },
+                          icon: const Icon(Icons.upload_file),
+                          label: const Text('Add Prescription'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (selectedPrescriptionPath != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            selectedPrescriptionPath!.toLowerCase().endsWith('.pdf')
+                                ? Icons.picture_as_pdf
+                                : Icons.image,
+                            color: Colors.blue,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              selectedPrescriptionPath!.split('/').last,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        if (doctorController.text.isNotEmpty &&
+                            reasonController.text.isNotEmpty) {
+                          try {
+                            final visit = Visit(
+                              doctor: doctorController.text,
+                              date: selectedDate,
+                              reason: reasonController.text,
+                              iconCodePoint: Icons.medical_services.codePoint,
+                              prescriptionImagePath: selectedPrescriptionPath,
+                              notes: notesController.text.isNotEmpty ? notesController.text : null,
+                            );
+                            await BlocProvider.of<HealthCubit>(context).addDoctorVisit(visit);
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(Navigator.of(context).context).showSnackBar(
+                              SnackBar(
+                                content: Text('✅ Visit with ${visit.doctor} added successfully!'),
+                                backgroundColor: AppColors.success,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          } catch (e) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(Navigator.of(context).context).showSnackBar(
+                              SnackBar(
+                                content: Text('❌ Error adding visit: ${e.toString()}'),
+                                backgroundColor: AppColors.error,
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          }
+                        } else {
+                          ScaffoldMessenger.of(Navigator.of(context).context).showSnackBar(
+                            SnackBar(
+                              content: const Text('⚠️ Please fill all required fields'),
+                              backgroundColor: AppColors.warning,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      },
+                      child: const Text('Add Visit'),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Load doctor visits when screen is first accessed
+    context.read<HealthCubit>().loadDoctorVisits();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<HealthCubit, HealthState>(
+      listener: (context, state) {
+        if (state is AddDoctorVisitErrorState) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Error adding doctor visit: ${state.error}'),
+              backgroundColor: AppColors.error,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        } else if (state is DeleteDoctorVisitErrorState) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Error deleting doctor visit: ${state.error}'),
+              backgroundColor: AppColors.error,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        } else if (state is DoctorVisitsErrorState) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Error loading doctor visits: ${state.error}'),
+              backgroundColor: AppColors.error,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      },
+      child: BlocBuilder<HealthCubit, HealthState>(
+        builder: (context, state) {
+          var cubit = context.read<HealthCubit>();
+          if (state is DoctorVisitsLoadingState) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          } else if (state is DoctorVisitsSuccessState) {
+            return Scaffold(
+              appBar: AppBar(
+                title: const Text('Doctor Visits'),
+                centerTitle: true,
+              ),
+              body: cubit.visits?.isEmpty??true
+                  ?  const EmptyFiles(
+                title:'No doctor visits added yet',
+                subtitle:'Tap the + button to add your first visit',
+                icon: Icons.medical_services,
+              )
+                  : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: cubit.visits?.length??0,
+                itemBuilder: (context, index) {
+                  final visit = cubit.visits![index];
+                  return VisitListTile(
+                    visit: visit,
+                    onDelete: () => context.read<HealthCubit>().deleteDoctorVisit(index),
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        Routes.visitDetailsRoute,
+                        arguments: visit,
+                      );
+                    },
+                  );
+                },
+              ),
+              floatingActionButton: FloatingActionButton(
+                mini: true,
+                onPressed: () => _showAddVisitBottomSheet(context),
+                backgroundColor: AppColors.primary,
+                child: const Icon(Icons.add, color: Colors.white),
+              ),
+            );
+          } else {
+            return const Scaffold(
+              body: Center(
+                child: Text('Something went wrong'),
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+} 

@@ -1,0 +1,107 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:untitled3/core/constants/app_colors.dart';
+import '../../../config/routes.dart';
+import '../../../core/utils/widgets/custom_snack_bar.dart';
+import '../../../view_models/health_cubit.dart';
+import '../../../view_models/health_state.dart';
+import '../../../core/utils/widgets/empty_files.dart';
+import '../../widgets/pills/pill_list_tile.dart';
+import '../../widgets/pills/add_pills_bottom_sheet.dart';
+
+class MedicationManagementScreen extends StatefulWidget {
+  const MedicationManagementScreen({Key? key}) : super(key: key);
+
+  @override
+  State<MedicationManagementScreen> createState() =>
+      _MedicationManagementScreenState();
+}
+
+class _MedicationManagementScreenState
+    extends State<MedicationManagementScreen> {
+
+  @override
+  void initState() {
+    super.initState();
+    // Load medications when screen is first accessed
+    context.read<HealthCubit>().loadMedications();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<HealthCubit, HealthState>(
+      listener: (context, state) {
+        if (state is AddMedicationSuccessState) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            CustomSnackBar(message: 'Added Successfully').customSnackBar(),
+          );
+        } else if (state is DeleteMedicationErrorState) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            CustomSnackBar(
+              message: '❌ Error deleting medication: ${state.error}',
+              color: Colors.red,
+            ).customSnackBar(),
+          );
+        } else if (state is MedicationErrorState) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            CustomSnackBar(
+              message: '❌ Error loading medications: ${state.error}',
+              color: Colors.red,
+            ).customSnackBar(),
+          );
+
+        }
+      },
+      child: BlocBuilder<HealthCubit, HealthState>(
+        builder: (context, state) {
+          var cubit = HealthCubit.get(context);
+
+          if (state is MedicationLoadingState) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          } else {
+            return Scaffold(
+              appBar: AppBar(title: const Text('Pills'), centerTitle: true),
+              body: cubit.pills?.isEmpty ?? true
+                  ? const EmptyFiles(
+                      title: 'No medications added yet',
+                      subtitle: 'Tap the + button to add your first medication',
+                      icon:FontAwesomeIcons.pills,
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: cubit.pills?.length ?? 0,
+                      itemBuilder: (context, index) {
+                        final pill = cubit.pills![index];
+                        return PillListTile(
+                          pill: pill,
+                          onDelete: () => cubit.deleteMedication(index),
+                        );
+                      },
+                    ),
+              floatingActionButton: FloatingActionButton(
+                mini: true,
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(20),
+                      ),
+                    ),
+                    builder: (context) => AddPillsBottomSheet(),
+                  );
+                },
+                backgroundColor: AppColors.primary,
+                child: const Icon(Icons.add, color: Colors.white),
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+}
