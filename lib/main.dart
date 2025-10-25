@@ -13,7 +13,6 @@ import 'view_models/health_cubit.dart';
 import 'config/routes.dart';
 import 'models/reminder.dart';
 import 'models/time_of_day_adapter.dart';
-// import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();

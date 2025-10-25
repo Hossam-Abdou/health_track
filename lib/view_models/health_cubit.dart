@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
+import '../core/secure_storage.dart';
 import '../models/pill.dart';
 import '../models/visit.dart';
 import '../models/medical_file.dart';
@@ -32,6 +33,8 @@ class HealthCubit extends Cubit<HealthState> {
   List<Visit>? visits;
   List<MedicalFile>? files;
   List<Reminder>? reminders;
+
+  Profile? profile;
 
 
   // Medication Methods
@@ -169,7 +172,6 @@ class HealthCubit extends Cubit<HealthState> {
     }
   }
 
-  Profile? profile;
   // Profile Methods
   Future<void> loadProfile() async {
     emit(ProfileLoadingState());

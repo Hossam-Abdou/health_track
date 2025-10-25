@@ -69,7 +69,8 @@ class RouteGenerator {
     }
   }
 
-  static Route<dynamic> unDefinedRoute() {
+  static Route<dynamic> unDefinedRoute([String? routeName]) {
+    // print('Undefined route: $routeName');
     return MaterialPageRoute(
       builder: (_) => Scaffold(
         appBar: AppBar(title: const Text('No Route Found')),

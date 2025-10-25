@@ -59,10 +59,10 @@ dependencies:
   hive_flutter: ^1.1.0
   flutter_time_picker_spinner:
   flutter_local_notifications: ^19.3.0
-  android_intent_plus:
-  device_info_plus:
+#  android_intent_plus:
+#  device_info_plus:
   font_awesome_flutter:
-
+#  flutter_secure_storage: ^8.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
